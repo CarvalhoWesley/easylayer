@@ -1,0 +1,45 @@
+group = "com.tiagomlbrasil.easylayer.easylayer"
+version = "1.0"
+
+buildscript {
+    repositories {
+        google()
+        mavenCentral()
+    }
+
+    dependencies {
+        classpath("com.android.tools.build:gradle:8.1.0")
+    }
+}
+
+rootProject.allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+apply plugin: "com.android.library"
+
+android {
+    if (project.android.hasProperty("namespace")) {
+        namespace = "com.tiagomlbrasil.easylayer.easylayer"
+    }
+
+    compileSdk = 34
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_1_8
+        targetCompatibility = JavaVersion.VERSION_1_8
+    }
+
+    defaultConfig {
+        minSdk = 21
+    }
+}
+
+dependencies {
+    implementation 'androidx.annotation:annotation-jvm:1.8.2'    
+    implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+    compileOnly files('libs/EasyLayer-SK210-v2.1.7-release.aar')
+}
