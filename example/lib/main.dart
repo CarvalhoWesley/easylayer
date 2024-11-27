@@ -17,6 +17,7 @@ class Application extends StatefulWidget {
 
 class _ApplicationState extends State<Application> {
   final printer = Easylayer.printer;
+  final scanner = Easylayer.scanner;
 
   @override
   Widget build(BuildContext context) {
@@ -541,6 +542,46 @@ class _ApplicationState extends State<Application> {
                   await printer.cutPaper(cutType: CutType.PAPER_FULL_CUT);
                 },
               ),
+              Builder(builder: (context) {
+                return Button(
+                  iconData: Icons.scanner_outlined,
+                  title: 'Start Scanner',
+                  body: '',
+                  onTap: () async {
+                    final status = await scanner.start();
+
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            status.toString(),
+                          ),
+                        ),
+                      );
+                    }
+                  },
+                );
+              }),
+              Builder(builder: (context) {
+                return Button(
+                  iconData: Icons.scanner_outlined,
+                  title: 'Stop Scanner',
+                  body: '',
+                  onTap: () async {
+                    final status = await scanner.stop();
+
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            status.toString(),
+                          ),
+                        ),
+                      );
+                    }
+                  },
+                );
+              }),
             ],
           ),
         ),
