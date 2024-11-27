@@ -1,37 +1,175 @@
 package com.tiagomlbrasil.easylayer.easylayer;
 
+import android.app.Activity;
+
 import androidx.annotation.NonNull;
 
+import io.flutter.embedding.engine.plugins.activity.ActivityAware;
+import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding;
 import io.flutter.embedding.engine.plugins.FlutterPlugin;
 import io.flutter.plugin.common.MethodCall;
 import io.flutter.plugin.common.MethodChannel;
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler;
 import io.flutter.plugin.common.MethodChannel.Result;
+import io.flutter.plugin.common.EventChannel;
 
-/** EasylayerPlugin */
-public class EasylayerPlugin implements FlutterPlugin, MethodCallHandler {
-  /// The MethodChannel that will the communication between Flutter and native Android
-  ///
-  /// This local reference serves to register the plugin with the Flutter Engine and unregister it
-  /// when the Flutter Engine is detached from the Activity
-  private MethodChannel channel;
-  private GertecPrinter gertecPrinter;
+/**
+ * EasylayerPlugin
+ */
+public class EasylayerPlugin implements FlutterPlugin, MethodCallHandler, ActivityAware, EventChannel.StreamHandler {
+    /// The MethodChannel that will the communication between Flutter and native Android
+    ///
+    /// This local reference serves to register the plugin with the Flutter Engine and unregister it
+    /// when the Flutter Engine is detached from the Activity
+    private MethodChannel channel;
+    private Activity activity;
+    private EventChannel eventChannel;
+    private EventChannel.EventSink eventSink;
+    private GertecPrinter gertecPrinter;
+    private GertecScanner gertecScanner; // Adicionado para gerenciar o scanner.
 
-  @Override
-  public void onAttachedToEngine(@NonNull FlutterPluginBinding flutterPluginBinding) {
-    channel = new MethodChannel(flutterPluginBinding.getBinaryMessenger(), "easylayer");
-    channel.setMethodCallHandler(this);
+    private void cleanUpResources() {
+        // Parar o scanner
+        if (gertecScanner != null) {
+            gertecScanner.dispose(); // Liberar recursos do scanner
+            gertecScanner = null;
+        }
 
-    this.gertecPrinter = new GertecPrinter(flutterPluginBinding.getApplicationContext());
-  }
+        // Liberar EventSink
+        if (eventSink != null) {
+            eventSink.endOfStream(); // Opcional, para notificar o fim do stream
+            eventSink = null;
+        }
 
-  @Override
-  public void onMethodCall(@NonNull MethodCall call, @NonNull Result result) {
-    this.gertecPrinter.handler.onMethodCall(call, result);
-  }
+        //Liberar Activity
+        if(activity != null) {
+            activity = null;
+        }
+    }
 
-  @Override
-  public void onDetachedFromEngine(@NonNull FlutterPluginBinding binding) {
-    channel.setMethodCallHandler(null);
-  }
+    @Override
+    public void onAttachedToEngine(@NonNull FlutterPluginBinding flutterPluginBinding) {
+        channel = new MethodChannel(flutterPluginBinding.getBinaryMessenger(), "easylayer");
+        channel.setMethodCallHandler(this);
+
+        eventChannel = new EventChannel(flutterPluginBinding.getBinaryMessenger(), "easylayer/scanner");
+        eventChannel.setStreamHandler(this);
+
+        this.gertecPrinter = new GertecPrinter(flutterPluginBinding.getApplicationContext());
+    }
+
+    @Override
+    public void onMethodCall(@NonNull MethodCall call, @NonNull Result result) {
+        try {
+            switch (call.method) {
+                default:
+                    result.notImplemented();
+
+                case "PRINT_TEXT": {
+                    gertecPrinter.printText(call, result);
+                    break;
+                }
+
+                case "PRINT_IMAGE": {
+                    gertecPrinter.printImage(call, result);
+                    break;
+                }
+
+                case "PRINT_HTML": {
+                    gertecPrinter.printHtml(call, result);
+                    break;
+                }
+
+                case "PRINT_TABLE": {
+                    gertecPrinter.printTable(call, result);
+                    break;
+                }
+
+                case "PRINT_BARCODE": {
+                    gertecPrinter.printBarcode(call, result);
+                    break;
+                }
+
+                case "SCROLL_PAPER": {
+                    gertecPrinter.scrollPaper(call, result);
+                    break;
+                }
+
+                case "GET_STATUS": {
+                    gertecPrinter.getStatus(call, result);
+                    break;
+                }
+
+                case "CUT_PAPER": {
+                    gertecPrinter.cutPaper(call, result);
+                    break;
+                }
+
+                case "START_SCANNER":
+                    if (gertecScanner != null) {
+                        gertecScanner.startScanner();
+                    } else {
+                        result.error("SCANNER_UNAVAILABLE", "Scanner is not initialized.", null);
+                    }
+                    break;
+
+                case "STOP_SCANNER":
+                    if (gertecScanner != null) {
+                        gertecScanner.stopScanner();
+                        result.success("Scanner stopped");
+                    } else {
+                        result.error("SCANNER_UNAVAILABLE", "Scanner is not initialized.", null);
+                    }
+                    break;
+            }
+        } catch (Exception e) {
+            result.error(e.getMessage() == null ? "" : e.getMessage(), null, null);
+        }
+    }
+
+    @Override
+    public void onDetachedFromEngine(@NonNull FlutterPluginBinding binding) {
+        channel.setMethodCallHandler(null);
+        eventChannel.setStreamHandler(null);
+    }
+
+    // Métodos de ActivityAware
+    @Override
+    public void onAttachedToActivity(@NonNull ActivityPluginBinding binding) {
+        this.activity = binding.getActivity();
+        this.gertecScanner = new GertecScanner(this.activity); // Scanner inicializado.
+    }
+
+    @Override
+    public void onDetachedFromActivityForConfigChanges() {
+        cleanUpResources();
+    }
+
+    @Override
+    public void onReattachedToActivityForConfigChanges(@NonNull ActivityPluginBinding binding) {
+        this.activity = binding.getActivity();
+        this.gertecScanner = new GertecScanner(this.activity); // Scanner re-inicializado.
+    }
+
+    @Override
+    public void onDetachedFromActivity() {
+        cleanUpResources();
+    }
+
+    // Métodos de EventChannel.StreamHandler
+    @Override
+    public void onListen(Object arguments, EventChannel.EventSink events) {
+        this.eventSink = events;
+        if (gertecScanner != null) {
+            gertecScanner.setEventSink(eventSink);  // Passa o EventSink para o GertecScanner
+        }
+    }
+
+    @Override
+    public void onCancel(Object arguments) {
+        this.eventSink = null;
+        if (gertecScanner != null) {
+            gertecScanner.setEventSink(null);  // Limpa a referência ao EventSink
+        }
+    }
 }
