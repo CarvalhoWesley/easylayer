@@ -18,6 +18,7 @@ class Application extends StatefulWidget {
 class _ApplicationState extends State<Application> {
   final printer = Easylayer.printer;
   final scanner = Easylayer.scanner;
+  String? scannedCode;
 
   @override
   Widget build(BuildContext context) {
@@ -544,44 +545,40 @@ class _ApplicationState extends State<Application> {
               ),
               Builder(builder: (context) {
                 return Button(
-                  iconData: Icons.scanner_outlined,
-                  title: 'Start Scanner',
-                  body: '',
+                  iconData: Icons.qr_code_scanner,
+                  title: 'Inicia Scanner',
+                  body:
+                      'Inicia o scanner e aguarda a leitura de um código de barras.',
                   onTap: () async {
-                    final status = await scanner.start();
-
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            status.toString(),
-                          ),
-                        ),
-                      );
-                    }
+                    scanner.start();
+                    setState(() {
+                      scannedCode = 'Aguardando leitura...';
+                    });
+                    scanner.onScan.listen((scannedCode) {
+                      setState(() {
+                        this.scannedCode = scannedCode;
+                      });
+                    });
                   },
                 );
               }),
               Builder(builder: (context) {
                 return Button(
-                  iconData: Icons.scanner_outlined,
-                  title: 'Stop Scanner',
-                  body: '',
-                  onTap: () async {
-                    final status = await scanner.stop();
-
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            status.toString(),
-                          ),
-                        ),
-                      );
-                    }
+                  iconData: Icons.stop,
+                  title: 'Para Scanner',
+                  body: 'Para o scanner e limpa o código lido.',
+                  onTap: () {
+                    scanner.stop();
+                    setState(() {
+                      scannedCode = null;
+                    });
                   },
                 );
               }),
+              Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Center(child: Text(scannedCode ?? '')),
+              ),
             ],
           ),
         ),

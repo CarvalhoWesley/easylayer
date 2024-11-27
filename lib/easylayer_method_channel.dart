@@ -11,10 +11,14 @@ class MethodChannelEasylayer extends EasylayerPlatform {
   @visibleForTesting
   late final MethodChannel methodChannel;
 
+  @visibleForTesting
+  late final EventChannel eventChannel;
+
   MethodChannelEasylayer() {
     methodChannel = const MethodChannel('easylayer');
+    eventChannel = const EventChannel('easylayer/scanner');
 
     super.printer = PrinterMethodChannel(methodChannel);
-    super.scanner = ScannerMethodChannel(methodChannel);
+    super.scanner = ScannerMethodChannel(methodChannel, eventChannel);
   }
 }

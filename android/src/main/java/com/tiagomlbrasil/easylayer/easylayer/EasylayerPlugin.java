@@ -11,24 +11,49 @@ import io.flutter.plugin.common.MethodCall;
 import io.flutter.plugin.common.MethodChannel;
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler;
 import io.flutter.plugin.common.MethodChannel.Result;
+import io.flutter.plugin.common.EventChannel;
 
 /**
  * EasylayerPlugin
  */
-public class EasylayerPlugin implements FlutterPlugin, MethodCallHandler, ActivityAware {
+public class EasylayerPlugin implements FlutterPlugin, MethodCallHandler, ActivityAware, EventChannel.StreamHandler {
     /// The MethodChannel that will the communication between Flutter and native Android
     ///
     /// This local reference serves to register the plugin with the Flutter Engine and unregister it
     /// when the Flutter Engine is detached from the Activity
     private MethodChannel channel;
     private Activity activity;
+    private EventChannel eventChannel;
+    private EventChannel.EventSink eventSink;
     private GertecPrinter gertecPrinter;
     private GertecScanner gertecScanner; // Adicionado para gerenciar o scanner.
+
+    private void cleanUpResources() {
+        // Parar o scanner
+        if (gertecScanner != null) {
+            gertecScanner.dispose(); // Liberar recursos do scanner
+            gertecScanner = null;
+        }
+
+        // Liberar EventSink
+        if (eventSink != null) {
+            eventSink.endOfStream(); // Opcional, para notificar o fim do stream
+            eventSink = null;
+        }
+
+        //Liberar Activity
+        if(activity != null) {
+            activity = null;
+        }
+    }
 
     @Override
     public void onAttachedToEngine(@NonNull FlutterPluginBinding flutterPluginBinding) {
         channel = new MethodChannel(flutterPluginBinding.getBinaryMessenger(), "easylayer");
         channel.setMethodCallHandler(this);
+
+        eventChannel = new EventChannel(flutterPluginBinding.getBinaryMessenger(), "easylayer/scanner");
+        eventChannel.setStreamHandler(this);
 
         this.gertecPrinter = new GertecPrinter(flutterPluginBinding.getApplicationContext());
     }
@@ -82,7 +107,7 @@ public class EasylayerPlugin implements FlutterPlugin, MethodCallHandler, Activi
 
                 case "START_SCANNER":
                     if (gertecScanner != null) {
-                        gertecScanner.startScanner(call, result);
+                        gertecScanner.startScanner();
                     } else {
                         result.error("SCANNER_UNAVAILABLE", "Scanner is not initialized.", null);
                     }
@@ -90,7 +115,8 @@ public class EasylayerPlugin implements FlutterPlugin, MethodCallHandler, Activi
 
                 case "STOP_SCANNER":
                     if (gertecScanner != null) {
-                        gertecScanner.stopScanner(call, result);
+                        gertecScanner.stopScanner();
+                        result.success("Scanner stopped");
                     } else {
                         result.error("SCANNER_UNAVAILABLE", "Scanner is not initialized.", null);
                     }
@@ -104,6 +130,7 @@ public class EasylayerPlugin implements FlutterPlugin, MethodCallHandler, Activi
     @Override
     public void onDetachedFromEngine(@NonNull FlutterPluginBinding binding) {
         channel.setMethodCallHandler(null);
+        eventChannel.setStreamHandler(null);
     }
 
     // Métodos de ActivityAware
@@ -115,11 +142,7 @@ public class EasylayerPlugin implements FlutterPlugin, MethodCallHandler, Activi
 
     @Override
     public void onDetachedFromActivityForConfigChanges() {
-        this.activity = null;
-        if (gertecScanner != null) {
-            gertecScanner.dispose(); // Dispose scanner corretamente
-        }
-        this.gertecScanner = null;
+        cleanUpResources();
     }
 
     @Override
@@ -130,10 +153,23 @@ public class EasylayerPlugin implements FlutterPlugin, MethodCallHandler, Activi
 
     @Override
     public void onDetachedFromActivity() {
-        this.activity = null;
+        cleanUpResources();
+    }
+
+    // Métodos de EventChannel.StreamHandler
+    @Override
+    public void onListen(Object arguments, EventChannel.EventSink events) {
+        this.eventSink = events;
         if (gertecScanner != null) {
-            gertecScanner.dispose(); // Dispose scanner corretamente
+            gertecScanner.setEventSink(eventSink);  // Passa o EventSink para o GertecScanner
         }
-        this.gertecScanner = null;
+    }
+
+    @Override
+    public void onCancel(Object arguments) {
+        this.eventSink = null;
+        if (gertecScanner != null) {
+            gertecScanner.setEventSink(null);  // Limpa a referência ao EventSink
+        }
     }
 }

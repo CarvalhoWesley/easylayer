@@ -1,5 +1,7 @@
 abstract class IScanner {
   Future start();
 
-  Future stop();
+  Future<void> stop();
+
+  Stream<String> get onScan;
 }
