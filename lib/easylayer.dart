@@ -1,5 +1,6 @@
 import 'package:easylayer/easylayer.dart';
 import 'package:easylayer/easylayer_platform_interface.dart';
+import 'package:easylayer/src/scanner.dart';
 
 export 'src/alignment.dart';
 export 'src/barcode_format.dart';
@@ -15,4 +16,5 @@ export 'src/text_format.dart';
 
 class Easylayer {
   static IPrinter printer = EasylayerPlatform.instance.printer;
+  static IScanner scanner = EasylayerPlatform.instance.scanner;
 }

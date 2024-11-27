@@ -1,3 +1,4 @@
+import 'package:easylayer/src/scanner_method_channel.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
@@ -14,5 +15,6 @@ class MethodChannelEasylayer extends EasylayerPlatform {
     methodChannel = const MethodChannel('easylayer');
 
     super.printer = PrinterMethodChannel(methodChannel);
+    super.scanner = ScannerMethodChannel(methodChannel);
   }
 }

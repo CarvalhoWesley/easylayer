@@ -1,3 +1,4 @@
+import 'package:easylayer/src/scanner.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 
 import 'easylayer.dart';
@@ -25,4 +26,5 @@ abstract class EasylayerPlatform extends PlatformInterface {
   }
 
   late final IPrinter printer;
+  late final IScanner scanner;
 }
